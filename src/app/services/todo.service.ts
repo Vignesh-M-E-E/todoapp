@@ -11,6 +11,8 @@ export interface Todo {
   status: string;
   priority: string;
   date: string;
+  month?: number;
+  year?: number;
   userId: string;
   createdAt?: string;
   updatedAt?: string;
@@ -27,55 +29,54 @@ export class TodoService {
     private auth: Auth
   ) {}
 
-  /**
-   * Get the current user ID
-   */
+  /** 🔹 Get current user ID */
   private getCurrentUserId(): string | null {
     return this.auth.currentUser?.uid || null;
   }
 
-  /**
-   * Create a new todo
-   */
+  /** 🔹 Extract month & year from date string */
+  private extractMonthYear(dateString: string): { month: number; year: number } {
+    const date = new Date(dateString);
+    return {
+      month: date.getMonth() + 1,
+      year: date.getFullYear()
+    };
+  }
+
+  /** 🔹 CREATE TODO */
   createTodo(todo: { title: string; description: string; status: string; priority: string; date: string }): Observable<any> {
     const userId = this.getCurrentUserId();
-    if (!userId) {
-      return throwError(() => ({ message: 'User not authenticated' }));
-    }
+    if (!userId) return throwError(() => ({ message: 'User not authenticated' }));
+
+    const { month, year } = this.extractMonthYear(todo.date);
 
     const todoData: Todo = {
       ...todo,
-      userId: userId,
+      month,
+      year,
+      userId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
     const todosCollection = collection(this.firestore, this.collectionName);
-    
+
     return from(addDoc(todosCollection, todoData)).pipe(
-      map((docRef) => {
-        return {
-          message: 'Todo created successfully',
-          todo: {
-            id: docRef.id,
-            ...todoData
-          }
-        };
-      }),
+      map((docRef) => ({
+        message: 'Todo created successfully',
+        todo: { id: docRef.id, ...todoData }
+      })),
       catchError((error) => {
+        console.error('Error creating todo:', error);
         return throwError(() => ({ message: 'Failed to create todo. Please try again.' }));
       })
     );
   }
 
-  /**
-   * Get all todos for the current user
-   */
+  /** 🔹 GET ALL TODOS for current user */
   getAllTodos(): Observable<any> {
     const userId = this.getCurrentUserId();
-    if (!userId) {
-      return throwError(() => ({ message: 'User not authenticated' }));
-    }
+    if (!userId) return throwError(() => ({ message: 'User not authenticated' }));
 
     const todosCollection = collection(this.firestore, this.collectionName);
     const q = query(
@@ -87,149 +88,97 @@ export class TodoService {
     return from(getDocs(q)).pipe(
       map((querySnapshot) => {
         const todos: Todo[] = [];
-        querySnapshot.forEach((doc) => {
-          todos.push({
-            id: doc.id,
-            ...doc.data() as Omit<Todo, 'id'>
-          });
+        querySnapshot.forEach((docSnap) => {
+          todos.push({ id: docSnap.id, ...docSnap.data() as Todo });
         });
         return { todos };
       }),
       catchError((error) => {
+        console.error('Error loading todos:', error);
         return throwError(() => ({ message: 'Failed to load todos. Please try again.' }));
       })
     );
   }
 
-  /**
-   * Get a single todo by ID
-   */
-  getTodoById(id: string): Observable<any> {
-    const userId = this.getCurrentUserId();
-    if (!userId) {
-      return throwError(() => ({ message: 'User not authenticated' }));
-    }
-
-    const todoDocRef = doc(this.firestore, this.collectionName, id);
-    
-    return from(getDoc(todoDocRef)).pipe(
-      map((docSnapshot) => {
-        if (!docSnapshot.exists()) {
-          throw new Error('Todo not found');
-        }
-        
-        const todoData = docSnapshot.data() as Todo;
-        
-        // Verify that the todo belongs to the current user
-        if (todoData.userId !== userId) {
-          throw new Error('Unauthorized access');
-        }
-        
-        return {
-          todo: {
-            id: docSnapshot.id,
-            ...todoData
-          }
-        };
-      }),
-      catchError((error) => {
-        return throwError(() => ({ message: error.message || 'Failed to load todo. Please try again.' }));
-      })
-    );
-  }
-
-  /**
-   * Update a todo
-   */
+  /** 🔹 UPDATE TODO */
   updateTodo(id: string, todo: { title: string; description: string; status: string; priority: string; date: string }): Observable<any> {
     const userId = this.getCurrentUserId();
-    if (!userId) {
-      return throwError(() => ({ message: 'User not authenticated' }));
-    }
+    if (!userId) return throwError(() => ({ message: 'User not authenticated' }));
 
+    const { month, year } = this.extractMonthYear(todo.date);
     const todoDocRef = doc(this.firestore, this.collectionName, id);
-    
+
     const updateData = {
       ...todo,
+      month,
+      year,
       updatedAt: new Date().toISOString()
     };
 
     return from(updateDoc(todoDocRef, updateData)).pipe(
-      map(() => {
-        return {
-          message: 'Todo updated successfully',
-          todo: {
-            id,
-            ...updateData,
-            userId
-          }
-        };
-      }),
+      map(() => ({
+        message: 'Todo updated successfully',
+        todo: { id, ...updateData, userId }
+      })),
       catchError((error) => {
+        console.error('Error updating todo:', error);
         return throwError(() => ({ message: 'Failed to update todo. Please try again.' }));
       })
     );
   }
 
-  /**
-   * Delete a todo
-   */
+  /** 🔹 DELETE TODO */
   deleteTodo(id: string): Observable<any> {
     const userId = this.getCurrentUserId();
-    if (!userId) {
-      return throwError(() => ({ message: 'User not authenticated' }));
-    }
+    if (!userId) return throwError(() => ({ message: 'User not authenticated' }));
 
     const todoDocRef = doc(this.firestore, this.collectionName, id);
-    
+
     return from(deleteDoc(todoDocRef)).pipe(
-      map(() => {
-        return { message: 'Todo deleted successfully' };
-      }),
+      map(() => ({ message: 'Todo deleted successfully' })),
       catchError((error) => {
+        console.error('Error deleting todo:', error);
         return throwError(() => ({ message: 'Failed to delete todo. Please try again.' }));
       })
     );
   }
 
-  /**
-   * Get todos filtered by month and year
-   */
+  /** 🔹 FILTER TODOS by Month & Year */
   getTodosByMonth(month: number, year: number): Observable<any> {
     const userId = this.getCurrentUserId();
-    if (!userId) {
-      return throwError(() => ({ message: 'User not authenticated' }));
-    }
+    if (!userId) return throwError(() => ({ message: 'User not authenticated' }));
 
-    // Create date range for the month
-    const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
-    const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+    if (!month || month < 1 || month > 12) {
+      return throwError(() => ({ message: 'Invalid month (1–12 required)' }));
+    }
+    if (!year || year < 2000 || year > 2100) {
+      return throwError(() => ({ message: 'Invalid year (2000–2100 required)' }));
+    }
 
     const todosCollection = collection(this.firestore, this.collectionName);
     const q = query(
       todosCollection,
       where('userId', '==', userId),
+      where('month', '==', month),
+      where('year', '==', year),
       orderBy('date', 'desc')
     );
 
     return from(getDocs(q)).pipe(
       map((querySnapshot) => {
         const todos: Todo[] = [];
-        querySnapshot.forEach((doc) => {
-          const todoData = doc.data() as Todo;
-          const todoDate = todoData.date;
-          
-          // Filter by month and year
-          if (todoDate >= startDate && todoDate <= endDate) {
-            todos.push({
-              id: doc.id,
-              ...todoData
-            });
-          }
+        querySnapshot.forEach((docSnap) => {
+          todos.push({ id: docSnap.id, ...docSnap.data() as Todo });
         });
         return { todos };
       }),
       catchError((error) => {
+        console.error('Error filtering todos:', error);
+        if (error.code === 'failed-precondition') {
+          return throwError(() => ({
+            message: 'Firestore index required — check Firestore console link.'
+          }));
+        }
         return throwError(() => ({ message: 'Failed to filter todos. Please try again.' }));
       })
     );

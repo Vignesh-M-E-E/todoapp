@@ -4,138 +4,81 @@
     <button type="button" (click)="logout()" class="btn-logout">Logout</button>
   </div>
 
-  <!-- Create/Edit Form -->
+  <!-- ===== FORM SECTION ===== -->
   <div class="form-section">
     <form (ngSubmit)="isEditMode ? updateTodo() : createTodo()">
       <div class="form-group">
-        <label for="title">Title</label>
-        <input 
-          type="text" 
-          id="title" 
-          [(ngModel)]="title" 
-          name="title" 
-          required 
-          placeholder="Enter todo title"
-        >
+        <label>Title</label>
+        <input type="text" [(ngModel)]="title" name="title" placeholder="Enter title" required />
       </div>
 
       <div class="form-group">
-        <label for="description">Description</label>
-        <textarea 
-          id="description" 
-          [(ngModel)]="description" 
-          name="description" 
-          required 
-          placeholder="Enter todo description"
-        ></textarea>
+        <label>Description</label>
+        <textarea [(ngModel)]="description" name="description" placeholder="Enter description" required></textarea>
       </div>
 
       <div class="form-row">
         <div class="form-group">
-          <label for="status">Status</label>
-          <select 
-            id="status" 
-            [(ngModel)]="status" 
-            name="status" 
-            required
-          >
-            <option *ngFor="let option of statusOptions" [value]="option">
-              {{ option }}
-            </option>
+          <label>Status</label>
+          <select [(ngModel)]="status" name="status" required>
+            <option *ngFor="let option of statusOptions" [value]="option">{{ option }}</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label for="priority">Priority</label>
-          <select 
-            id="priority" 
-            [(ngModel)]="priority" 
-            name="priority" 
-            required
-          >
-            <option *ngFor="let option of priorityOptions" [value]="option">
-              {{ option }}
-            </option>
+          <label>Priority</label>
+          <select [(ngModel)]="priority" name="priority" required>
+            <option *ngFor="let option of priorityOptions" [value]="option">{{ option }}</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label for="date">Date</label>
-          <input 
-            type="date" 
-            id="date" 
-            [(ngModel)]="date" 
-            name="date" 
-            required
-          >
+          <label>Date</label>
+          <input type="date" [(ngModel)]="date" name="date" required />
         </div>
       </div>
 
       <div class="form-actions">
-        <button type="submit">{{ isEditMode ? 'Update Todo' : 'Create Todo' }}</button>
-        <button *ngIf="isEditMode" type="button" (click)="cancelEdit()" class="btn-cancel">Cancel</button>
+        <button type="submit">{{ isEditMode ? 'Update' : 'Create' }}</button>
+        <button *ngIf="isEditMode" type="button" class="btn-cancel" (click)="cancelEdit()">Cancel</button>
       </div>
     </form>
 
-    <div *ngIf="errorMessage" class="error-message">
-      {{ errorMessage }}
-    </div>
-
-    <div *ngIf="successMessage" class="success-message">
-      {{ successMessage }}
-    </div>
+    <!-- Messages -->
+    <div *ngIf="!loading && errorMessage" class="error-message">{{ errorMessage }}</div>
+    <div *ngIf="successMessage" class="success-message">{{ successMessage }}</div>
   </div>
 
-  <!-- Todos Table Section -->
+  <!-- ===== TODOS SECTION ===== -->
   <div class="todos-section">
     <div class="section-header">
       <h2>{{ isFilterActive ? 'Filtered Todos' : 'All Todos' }}</h2>
-      <div class="header-actions">
-        <!-- Month Filter -->
-        <div class="filter-section">
-          <label for="filterMonth">Month:</label>
-          <select 
-            id="filterMonth" 
-            [(ngModel)]="filterMonth"
-            (change)="filterTodosByMonth()"
-          >
-            <option *ngFor="let month of monthOptions" [value]="month.value">
-              {{ month.name }}
-            </option>
-          </select>
-          
-          <label for="filterYear">Year:</label>
-          <input 
-            type="number" 
-            id="filterYear" 
-            [(ngModel)]="filterYear"
-            (change)="filterTodosByMonth()"
-            min="2020"
-            max="2100"
-            style="width: 80px;"
-          >
-          
-          <button type="button" (click)="filterTodosByMonth()" class="btn-filter">Filter</button>
-          <button *ngIf="isFilterActive" type="button" (click)="clearFilter()" class="btn-clear-filter">Clear Filter</button>
-        </div>
-        
-        <button type="button" (click)="loadTodos()" class="btn-refresh">Refresh</button>
+
+      <div class="filter-section">
+        <label>Month:</label>
+        <select [(ngModel)]="filterMonth" (change)="filterTodosByMonth()">
+          <option *ngFor="let m of monthOptions" [value]="m.value">{{ m.name }}</option>
+        </select>
+
+        <label>Year:</label>
+        <input type="number" [(ngModel)]="filterYear" (change)="filterTodosByMonth()" min="2020" max="2100" style="width:80px" />
+
+        <button type="button" class="btn-filter" (click)="filterTodosByMonth()">Filter</button>
+        <button *ngIf="isFilterActive" type="button" class="btn-clear-filter" (click)="clearFilter()">Clear</button>
+        <button type="button" class="btn-refresh" (click)="loadTodos()">Refresh</button>
       </div>
     </div>
 
-    <div *ngIf="loading" class="loading">
-      Loading todos...
-    </div>
+    <div *ngIf="loading" class="loading">Loading todos...</div>
 
-    <div *ngIf="!loading && todos.length === 0" class="empty-state">
-      No todos found. Create your first todo above!
+    <div *ngIf="!loading && todos.length === 0 && !errorMessage" class="empty-state">
+      No todos found. Create one above!
     </div>
 
     <div *ngIf="!loading && todos.length > 0" class="table-container">
       <table class="todos-table">
         <thead>
           <tr>
-            <th>ID</th>
             <th>Title</th>
             <th>Description</th>
             <th>Date</th>
@@ -146,23 +89,14 @@
         </thead>
         <tbody>
           <tr *ngFor="let todo of todos">
-            <td>{{ todo.id }}</td>
             <td>{{ todo.title }}</td>
             <td class="description-cell">{{ todo.description }}</td>
             <td>{{ todo.date | date:'MMM dd, yyyy' }}</td>
+            <td><span [ngClass]="getStatusClass(todo.status)" class="status-badge">{{ todo.status }}</span></td>
+            <td><span [ngClass]="getPriorityClass(todo.priority)" class="priority-badge">{{ todo.priority }}</span></td>
             <td>
-              <span class="status-badge" [ngClass]="getStatusClass(todo.status)">
-                {{ todo.status }}
-              </span>
-            </td>
-            <td>
-              <span class="priority-badge" [ngClass]="getPriorityClass(todo.priority)">
-                {{ todo.priority }}
-              </span>
-            </td>
-            <td class="actions-cell">
-              <button type="button" (click)="editTodo(todo)" class="btn-edit">Edit</button>
-              <button type="button" (click)="deleteTodo(todo.id)" class="btn-delete">Delete</button>
+              <button class="btn-edit" (click)="editTodo(todo)">Edit</button>
+              <button class="btn-delete" (click)="deleteTodo(todo.id)">Delete</button>
             </td>
           </tr>
         </tbody>
